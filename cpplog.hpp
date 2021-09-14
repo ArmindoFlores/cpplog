@@ -101,7 +101,7 @@ namespace cpplog {
         : log_level(log_level), running(true)
         {
             if (this->config_format == "")
-                this->config_format = "$message"; 
+                this->config_format = "$thread_name::$level $message"; 
             consumer = std::thread([this](){ this->consumer_thread(); });
         }
         ~Logger()
