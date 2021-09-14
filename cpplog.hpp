@@ -31,52 +31,83 @@ namespace cpplog {
 
     class Logger {
     public:
-        Logger(LogLevel log_level=LogLevel::WARNING, const std::string& config_format="")
-        : log_level(log_level), config_format(config_format), running(true)
+        Logger(Logger &) = delete;
+        void operator=(const Logger&) = delete;
+
+        static Logger* get_instance()
         {
+            std::unique_lock<std::mutex> lck(instance_mutex);
+            if (!Logger::instance)
+                Logger::instance = new Logger();
+            return Logger::instance;
+        }
+        static void delete_instance()
+        {
+            std::unique_lock<std::mutex> lck(instance_mutex);
+            delete Logger::instance;
+            Logger::instance = nullptr;
+        }
+
+        static void set_log_level(LogLevel level) 
+        {
+            get_instance()->log_level = level; 
+        }
+        static LogLevel get_log_level() { return get_instance()->log_level; }
+        static void set_config_format(const std::string& config) 
+        { 
+            Logger *inst = get_instance();
+            inst->config_mutex.lock();
+            inst->config_format = config; 
+            inst->config_mutex.unlock();
+        }
+
+        static void debug(const std::string& msg)
+        {
+            Logger *inst = get_instance();
+            if (inst->log_level <= LogLevel::DEBUG)
+                inst->add_message(msg, LogLevel::DEBUG);
+        }
+        static void info(const std::string& msg)
+        {
+            Logger *inst = get_instance();
+            if (inst->log_level <= LogLevel::INFO)
+                inst->add_message(msg, LogLevel::INFO);
+        }
+        static void warning(const std::string& msg)
+        {
+            Logger *inst = get_instance();
+            if (inst->log_level <= LogLevel::WARNING)
+                inst->add_message(msg, LogLevel::WARNING);
+        }
+        static void error(const std::string& msg)
+        {
+            Logger *inst = get_instance();
+            if (inst->log_level <= LogLevel::ERROR)
+                inst->add_message(msg, LogLevel::ERROR);
+        }
+
+        static void register_current_thread(const std::string& name)
+        {
+            Logger *inst = get_instance();
+            inst->map_mutex.lock();
+            inst->thread_names[std::this_thread::get_id()] = name;
+            inst->map_mutex.unlock();
+        }
+
+    protected:
+        static Logger *instance;
+        static std::mutex instance_mutex;
+        Logger(LogLevel log_level=LogLevel::WARNING, const std::string& config_format="")
+        : log_level(log_level), running(true)
+        {
+            if (this->config_format == "")
+                this->config_format = "$message"; 
             consumer = std::thread([this](){ this->consumer_thread(); });
         }
         ~Logger()
         {
             running = false;
             consumer.join();
-        }
-
-        void set_log_level(LogLevel level) { log_level = level; }
-        LogLevel get_log_level() { return log_level; }
-        void set_config_format(const std::string& config) 
-        { 
-            config_mutex.lock();
-            config_format = config; 
-            config_mutex.unlock();
-        }
-
-        void debug(const std::string& msg)
-        {
-            if (log_level <= LogLevel::DEBUG)
-                add_message(msg, LogLevel::DEBUG);
-        }
-        void info(const std::string& msg)
-        {
-            if (log_level <= LogLevel::INFO)
-                add_message(msg, LogLevel::INFO);
-        }
-        void warning(const std::string& msg)
-        {
-            if (log_level <= LogLevel::WARNING)
-                add_message(msg, LogLevel::WARNING);
-        }
-        void error(const std::string& msg)
-        {
-            if (log_level <= LogLevel::ERROR)
-                add_message(msg, LogLevel::ERROR);
-        }
-
-        void register_current_thread(const std::string& name)
-        {
-            map_mutex.lock();
-            thread_names[std::this_thread::get_id()] = name;
-            map_mutex.unlock();
         }
 
     private:
@@ -168,6 +199,9 @@ namespace cpplog {
             queue_mutex.unlock();
         }
     };
+
+    Logger *Logger::instance = nullptr; 
+    std::mutex Logger::instance_mutex;
 }
 
 #endif
