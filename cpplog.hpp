@@ -136,7 +136,7 @@ namespace cpplog {
             std::string final = "";
             std::string keyword_text;
             bool keyword = false;
-            for (std::size_t i = 0; i < pre_processed.size(); i++) {
+            for (std::size_t i = 0; i < pre_processed.length(); i++) {
                 if (!keyword) {
                     if (pre_processed[i] == '$') {
                         keyword = true;
@@ -148,7 +148,7 @@ namespace cpplog {
                 else {
                     if ((pre_processed[i] >= 'a' && pre_processed[i] <= 'z') || (pre_processed[i] >= 'A' && pre_processed[i] <= 'Z') || pre_processed[i] == '_') {
                         keyword_text += pre_processed[i];
-                        if (i != pre_processed.size() - 1)
+                        if (i != pre_processed.length() - 1)
                             continue;
                     }
                     if (keyword_text == "thread_name")
@@ -158,7 +158,7 @@ namespace cpplog {
                     else if (keyword_text == "level")
                         final += levels[(int) msg.level];
 
-                    if (i != pre_processed.size() - 1) final += pre_processed[i];
+                    final += pre_processed[i];
                     keyword = false;
                 }
             }
